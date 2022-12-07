@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Tree Pit Survey</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+  <!--  <link rel="shortcut icon" href="thesquare.png" /> -->
+	
+	<script src='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.js'></script>
+	
+	    <!-- include cartodb.js library -->
+ 
+	
+	 <script src="http://libs.cartocdn.com/cartodb.js/v3/cartodb.js" type="application/javascript"></script>
+	 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ==" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js" integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ==" crossorigin=""></script>
+
+
+	
+<link href='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.css' rel='stylesheet' />
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <link rel="stylesheet" href="https://libs.cartocdn.com/cartodb.js/v3/themes/css/cartodb.css" />
+    <!--[if lte IE 8]>
+      <link rel="stylesheet" href="http://libs.cartocdn.com/cartodb.js/v3/themes/css/cartodb.ie.css" />
+    <![endif]-->
+
+<!-- PapaParse - hope this works... -->
+
+
+   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
+	
+    <style> 
+      html, body, #map {
+        height: 100%;
+        padding: 0;
+        margin: 0;
+		font-family: Helvetica, sans serif;
+      }
+	  
+	  #map{
+		width:100%;
+		position: fixed 0 0;
+		z-index:10;
+	  }
+	  
+    </style>
+	
+
+  </head>
+  <body>
+
+    <div id="map"></div>
+
+    
+
+
+    <script>
+
+var dotGroup = new L.featureGroup();
+
+
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(showPosition);
+  } else {
+    console.log("error");
+  }
+}
+
+function showPosition(position) {
+  map.setView([position.coords.latitude, position.coords.longitude],16);
+}
+
+
+var map = new L.Map('map', {
+       //   zoomControl: false,
+          center: [40.7338316,-74.1823335],
+          zoom: 16,
+		  //scrollWheelZoom: false
+        });
+		
+
+map.on('click', function(ev){
+  var latlng = map.mouseEventToLatLng(ev.originalEvent);
+ 
+  let popupWindow = window.open('https://docs.google.com/forms/d/e/1FAIpQLSd3UnS_xvj6JZwASBoh_IukkM0ayRCdcR9hXoVXj1GB3L6xNA/viewform?usp=pp_url&entry.311154132=' + latlng.lat + '&entry.151267416=' + latlng.lng, 'dataWindow');
+
+	popupWindow.onunload = setTimeout( function() {
+		fetchSheet({
+        complete: showInfo
+    });
+	}, 10000); 
+
+});
+
+
+function main() {
+getLocation();
+
+mapboxBase = L.tileLayer('https://api.mapbox.com/styles/v1/ixd-maps/ckp4lnovr72xe17o2i59rmtrp/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoiaXhkLW1hcHMiLCJhIjoiY2p5aTNyeDJjMDZiNzNjbzJ3NXg4enBnNyJ9.Pu8sks70-J3xwfXbVYk2rA', {
+	maxZoom:21,
+	attribution: 'iana dikidjieva with mapbox'
+}).addTo(map);	
+
+
+dotGroup.addTo(map);
+	
+}
+
+
+
+
+var content = '';
+var latlng;
+var pos = 0;
+var data;
+var latlngArray = [];
+var lat;
+var lng;
+
+function showInfo(results) {
+
+	console.log(results.data);
+	
+	data = results.data;
+
+	for (i in data) {
+		lat = data[i].LAT;
+		lng = data[i].LNG;
+		var dot = new L.circleMarker([lat,lng]);
+	var picraw = '';
+	var picURL = '';
+	
+		if (data[i].Pic){
+			picraw = data[i].Pic.slice(29);
+			picURL = "https://drive.google.com/uc"+picraw;
+			console.log(picURL);
+			dot.bindPopup("<img width='200' src=" + picURL + ">" + "<br><hr><br><b>Notes: </b>" + data[i].Notes);
+		}
+		
+		else {
+			dot.bindTooltip("<b>Notes: </b>" + data[i].Notes);
+		}
+		dotGroup.addLayer(dot);
+
+	}
+
+ 
+/*	for (i in dotGroup._layers){
+		latlngArray.push(i);
+	}
+*/
+
+		
+}
+
+
+function fetchSheet({complete}) {
+    let url = "https://sheets.googleapis.com/v4/spreadsheets/1MAOc7mUv_Eq5tQWGlJjANB7rJoQheTuOeqSgsfC6TR4/values/'treepits'!A1:E100?key=AIzaSyAFIFNFrf01wbzO7Wmt4ZVQIna7HFPivPw";
+    return fetch(url).then(response =>
+        response.json().then(result => {
+            let data = Papa.parse(Papa.unparse(result.values), { header: true });
+            complete(data);
+			
+        })
+    );
+}
+
+function init() {
+
+    fetchSheet({
+        complete: showInfo
+    });
+	main();
+	}
+
+
+window.addEventListener('DOMContentLoaded', init);
+
+      // you could use $(window).load(main);
+    
+    </script>
+  </body>
+</html>
